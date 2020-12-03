@@ -1,4 +1,15 @@
 // Snake: The Game
+
+// IMPORTANT NOTES
+// Direction Change - If up, cant go down. If down, cant go up. If left, cant go right. If right, cant go left.
+// Possible directions - Up - left, right. Down - left, right. Right, Up, down. Left, Up down. 
+// Apple changes - Instead of deleting the apple and readding it, we just need to change the modelview matrix
+// Body of snake movement - Increase the coordinate of each corresponding 
+//  model view matrix coordinate by (some unit that we decide - one sphere diameter)
+// If Snake hits edge or itself, show a window.alert("Game over") with a start over button or exit button (closes window)
+// Include HTML tally in the top right hand corner for score
+
+
 'use strict';
 
 // Global WebGL context variable
@@ -7,6 +18,14 @@ let coords, indices;
 
 // Allow use of glMatrix values directly instead of needing the glMatrix prefix
 const mat4 = glMatrix.mat4;
+const vec3 = glMatrix.vec3;
+
+// Snake
+let obj;
+
+let position = [0, 0, -10];
+let rotation = [0, 0, 0];
+let scale = [0.1, 0.1, 0.1];
 
 // Once the document is fully loaded run this init function.
 window.addEventListener('load', function init() {
@@ -27,7 +46,7 @@ window.addEventListener('load', function init() {
     initBuffers();
     initEvents();
     
-    gl.uniform4f(gl.program.uLight, 0,0,10,1);
+    gl.uniform4f(gl.program.uLight, 1,1,1,1);
     onWindowResize();
     updateModelViewMatrix();
     updateProjectionMatrix();
@@ -48,22 +67,21 @@ function initProgram() {
 
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
-        uniform vec4 uLight;
+        const vec4 light = vec4(0, 0, 5, 1);
 
         in vec4 aPosition;
         in vec3 aNormal;
-        uniform vec4 uPosition;
-        
-        out vec3 vLightVector;
-        out vec3 vNormalVector;
-        out vec3 vEyeVector;
 
+        out vec3 vNormalVector;
+        out vec3 vLightVector;
+        out vec3 vEyeVector;
 
         void main() {
             vec4 P = uModelViewMatrix * aPosition;
             vNormalVector = mat3(uModelViewMatrix) * aNormal;
-            vLightVector = uLight.w == 1.0 ? P.xyz - uLight.xyz : uLight.xyz;
-            vEyeVector = P.xyz;
+            vec4 L = uModelViewMatrix * light;
+            vLightVector = light.w == 1.0 ? P.xyz - L.xyz : L.xyz;
+            vEyeVector = -P.xyz;
             gl_Position = uProjectionMatrix * P;
         }`
     );
@@ -72,28 +90,26 @@ function initProgram() {
         `#version 300 es
         precision mediump float;
 
+        // Light and material properties
+        const vec3 lightColor = vec3(1, 1, 1);
+        const vec3 materialAmbient = vec3(0.2, 0.2, 0.2);
+        const vec3 materialDiffuse = vec3(0.5, 0.5, 0.5);
+        const float materialShininess = 100.0;
+
+        // Vectors (varying variables from vertex shader)
         in vec3 vNormalVector;
         in vec3 vLightVector;
         in vec3 vEyeVector;
 
-        // Material properties
-        const vec3 lightColor = vec3(1.0, 1.0, 1.0);
-        const float materialAmbient = 0.6;
-        const float materialDiffuse = 0.4;
-        const float materialSpecular = 0.6;
-        const float materialShininess = 10.0;
-
-        // Fragment base color
-        const vec4 vColor = vec4(0.0, 0.75, 0.0, 1.0);
-
-        // Output color of the fragment
         out vec4 fragColor;
 
         void main() {
+            // Normalize vectors
             vec3 N = normalize(vNormalVector);
             vec3 L = normalize(vLightVector);
             vec3 E = normalize(vEyeVector);
 
+            // Compute lighting
             float diffuse = dot(-L, N);
             float specular = 0.0;
             if (diffuse < 0.0) {
@@ -102,10 +118,9 @@ function initProgram() {
                 vec3 R = reflect(L, N);
                 specular = pow(max(dot(R, E), 0.0), materialShininess);
             }
-
-            fragColor.rgb = ((materialAmbient + materialDiffuse * diffuse) 
-                            * vColor.xyz + materialSpecular * specular) * lightColor;
-
+            
+            // Compute final color
+            fragColor.rgb = lightColor * ((materialAmbient + materialDiffuse * diffuse) + specular);
             fragColor.a = 1.0;
         }`
     );
@@ -132,39 +147,129 @@ function initProgram() {
  * Initialize the data buffers.
  */
 function initBuffers() {
+    [coords, indices] = unit_sphere();
+    obj = createObject(coords, indices);
+}
 
-    // Generate Mesh
-    let coords = [];
-    let indices = [];
-    let normals = [];
+/**
+ * Creates a VAO containing the coordinates and indices provided.
+ */
+function createObject(coords, indices) {
+    let normals = coords;
 
     // Create and bind VAO
-    gl.vao = gl.createVertexArray();
-    gl.bindVertexArray(gl.vao);
+    let vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
 
-    // Load the vertex coordinate data onto the GPU and associate with attribute
-    let posBuffer = gl.createBuffer(); // create a new buffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer); // bind to the new buffer
-    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW); // load the data into the buffer
-    gl.vertexAttribPointer(gl.program.aPosition, 3, gl.FLOAT, false, 0, 0); // associate the buffer with "aPosition" as length-2 vectors of floats
-    gl.enableVertexAttribArray(gl.program.aPosition); // enable this set of data
+    // Load the coordinate data into the GPU and associate with shader
+    let buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(gl.program.aPosition, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(gl.program.aPosition);
 
-    // Load the index data onto the GPU
-    let indBuffer = gl.createBuffer(); // create a new buffer
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indBuffer); // bind to the new buffer
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, Uint16Array.from(indices), gl.STATIC_DRAW); // load the data into the buffer
-
-    // Load the vertex normal data onto the GPU and associate with attribute
-    let normalBuffer = gl.createBuffer(); // create a new buffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer); // bind to the new buffer
-    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW); // load the data into the buffer
-    gl.vertexAttribPointer(gl.program.aNormal, 3, gl.FLOAT, false, 0, 0); // associate the buffer with "aNormal" as length-3 vectors of floats
-    gl.enableVertexAttribArray(gl.program.aNormal); // enable this set of data
+    // Load the normal data into the GPU and associate with shader
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(gl.program.aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(gl.program.aNormal);
+    
+    // Load the index data into the GPU
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
     // Cleanup
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+    // Return the object information
+    return [vao, indices.length];
+}
+
+/**
+ * Create an approximate unit sphere by subdividing the faces of a tetrahedron repeatedly. The
+ * sphere will be centered at the origin and have a radius of 1. For different spheres the
+ * vertices can just be transformed as necessary.
+ * 
+ * Returns the Float32Array of 3-element coordinates and Uint16Array of indices. The coordinates
+ * are the same as the normals so that can just be reused.
+ * 
+ * Number of subdivisions is the only parameter and defaults to 7 which means that 65,536 triangles
+ * are used to approximate the sphere which is the highest quality sphere this can generate. A
+ * value of 0 would just give a tetrahedron (4 triangles) and 1 would give a 16-sided shape.
+ */
+function unit_sphere(num_subdivisions) {
+    if (typeof num_subdivisions === "undefined") { num_subdivisions = 7; }
+
+    let num_triangles = Math.pow(4, num_subdivisions); // number of triangles per face of tetrahedron
+    let indices = new Uint16Array(12 * num_triangles);
+    let coords = new Float32Array(6 * num_triangles + 6); // see https://oeis.org/A283070
+    let indices_pos = 0, coords_pos = 0; // current position in each of the arrays
+    let map = new Map();
+
+    /**
+     * Gets the index of the coordinate c. If c already exists than its previous index is
+     * returned otherwise c is added and its new index is returned. The whole point of this
+     * function (and the map variable) is so that duplicate coordinates get merged into a single
+     * vertex.
+     */
+    function add_coord(c) {
+        let str = c.toString();
+        if (!map.has(str)) {
+            map.set(str, coords_pos);
+            coords.set(c, coords_pos*3);
+            coords_pos++;
+        }
+        indices[indices_pos++] = map.get(str);
+    }
+
+    /**
+     * Recursive function to continually divide a triangle similar to the Sierpinski's triangle
+     * recursive function.
+     */
+    function divide_triangle(a, b, c, n) {
+        if (n === 0) {
+            // Base case: add the triangle
+            add_coord(b);
+            add_coord(a);
+            add_coord(c);
+        } else {
+            // Get the midpoints
+            let ab = vec3.lerp(vec3.create(), a, b, 0.5);
+            let ac = vec3.lerp(vec3.create(), a, c, 0.5);
+            let bc = vec3.lerp(vec3.create(), b, c, 0.5);
+
+            // Recursively divide
+            divide_triangle(a, ab, ac, n-1);
+            divide_triangle(ab, b, bc, n-1);
+            divide_triangle(ac, bc, c, n-1);
+            divide_triangle(ab, bc, ac, n-1);
+        }
+    }
+
+    // Initial tetrahedron to be divdied, 4 equidistant points at approximately:
+    //    <0,0,-1>, <0,2*√2/3,1/3>, <-√6/3, -√2/3, 1/3>, and <√6/3, -√2/3, 1/3>
+	let a = vec3.fromValues(0.0, 0.0, -1.0);
+	let b = vec3.fromValues(0.0, 0.94280904158, 0.33333333333);
+	let c = vec3.fromValues(-0.81649658093, -0.4714045207, 0.33333333333);
+	let d = vec3.fromValues( 0.81649658093, -0.4714045207, 0.33333333333);
+    
+    // Subdivide each face of the tetrahedron
+	divide_triangle(a, b, c, num_subdivisions);
+	divide_triangle(d, c, b, num_subdivisions);
+	divide_triangle(a, d, b, num_subdivisions);
+    divide_triangle(a, c, d, num_subdivisions);
+
+    // Normalize each vertex so that it is moved to the surface of the unit sphere
+	for (let i = 0; i < coords.length; i += 3) {
+        let coord = coords.subarray(i, i+3);
+        vec3.normalize(coord, coord);
+    }
+
+    return [coords, indices];
 }
 
 function initEvents() {
@@ -181,7 +286,9 @@ function onKeyDown(e) {
  */
 function updateModelViewMatrix() {
     // Update model-view matrix uniform
-    let mv = mat4.create();
+    let mv = glMatrix.mat4.fromRotationTranslationScale(glMatrix.mat4.create(),
+        glMatrix.quat.fromEuler(glMatrix.quat.create(), ...rotation), position, scale);
+    gl.uniformMatrix4fv(gl.program.uModelViewMatrix, false, mv);
 
 }
 
@@ -189,8 +296,9 @@ function updateModelViewMatrix() {
  * Updates the projection matrix.
  */
 function updateProjectionMatrix() {
-    let p = mat4.create();
     let aspect = gl.canvas.width / gl.canvas.height;
+    let p = mat4.perspective(mat4.create(), Math.PI / 6, aspect, 0.1, 10);
+    gl.uniformMatrix4fv(gl.program.uProjectionMatrix, false, p);
 }
 
 function deg2rad(degrees) {
@@ -211,12 +319,10 @@ function onWindowResize() {
  * Render the scene.
  */
 function render() {
-    // Clear the current rendering
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    
-    // Draw
-    gl.bindVertexArray(gl.vao);
-    gl.drawElements(gl.TRIANGLE_STRIP,indices.length, gl.UNSIGNED_SHORT, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    let [vao, count] = obj;
+    gl.bindVertexArray(vao);
+    gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
     window.requestAnimationFrame(render);
 }

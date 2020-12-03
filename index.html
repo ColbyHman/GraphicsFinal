@@ -21,14 +21,29 @@
                 overflow: no-scroll;
             }
             canvas {
-                width: 90%; height: 90%;
+                width: 80%; height: 80%;
                 position: absolute;
                 top: 0; bottom: 0; left: 0; right: 0;
                 margin: auto;
             }
+            h2 {
+                right:0;
+                bottom: 10;
+                margin-right: 10%;
+                position: absolute;
+                color:black;
+            }
+            .label {
+                right:0;
+                bottom: 10;
+                margin-right: 12%;
+                position: absolute;
+            }
+            
         </style>
     </head>
     <body>
+        <h2 class="label">Score : </h2><h2 id="score">0</h2>
         <!-- Define the canvas to use for the WebGL example -->
         <canvas id="webgl-canvas" width="400" height="400">
             Your browser doesn't support the HTML5 canvas element.
