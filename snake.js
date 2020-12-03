@@ -27,6 +27,9 @@ let position = [0, 0, -10];
 let rotation = [0, 0, 0];
 let scale = [0.1, 0.1, 0.1];
 
+let current_direction = "up";
+let snake = [];
+
 // Once the document is fully loaded run this init function.
 window.addEventListener('load', function init() {
     // Get the HTML5 canvas object from it's ID
@@ -277,7 +280,36 @@ function initEvents() {
     document.addEventListener('keydown', onKeyDown);
 }
 
+function changeDirection(direction){
+    if (current_direction === "up" && direction != "down") {
+        return direction;
+    } else if (current_direction === "down" && direction != "up") {
+        return direction;
+    } else if (current_direction === "left" && direction != "right") {
+        return direction;
+    } else if (current_direction === "right" && direction != "left") {
+        return direction;
+    }
+    return direction
+}
+
 function onKeyDown(e) {
+    // Turn Facing Up
+    if (e.key === "ArrowUp" || e.key === "w") {
+        console.log("Up");
+    }
+    // Turn Facing Down
+    if (e.key === "ArrowDown" || e.key === "s") {
+        console.log("Down");
+    }
+    // Turn Facing Left
+    if (e.key === "ArrowLeft" || e.key === "a") {
+        console.log("Left");
+    }
+    // Turn Facing Right
+    if (e.key === "ArrowRight" || e.key === "d") {
+        console.log("Right");
+    }
     
 }
 
