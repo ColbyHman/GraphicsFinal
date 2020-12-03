@@ -288,11 +288,11 @@ function initEvents() {
 function changeDirection(direction){
     if (current_direction === "up" && direction != "down") {
         return direction;
-    } else if (current_direction === "down" && direction != "up") {
+    } else if (current_direction === "down" && direction !== "up") {
         return direction;
-    } else if (current_direction === "left" && direction != "right") {
+    } else if (current_direction === "left" && direction !== "right") {
         return direction;
-    } else if (current_direction === "right" && direction != "left") {
+    } else if (current_direction === "right" && direction !== "left") {
         return direction;
     }
     return current_direction;
