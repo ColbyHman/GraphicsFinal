@@ -1,13 +1,17 @@
 // Snake: The Game
 
 // IMPORTANT NOTES
-// Direction Change - If up, cant go down. If down, cant go up. If left, cant go right. If right, cant go left.
-// Possible directions - Up - left, right. Down - left, right. Right, Up, down. Left, Up down. 
 // Apple changes - Instead of deleting the apple and readding it, we just need to change the modelview matrix
 // Body of snake movement - Increase the coordinate of each corresponding 
 //  model view matrix coordinate by (some unit that we decide - one sphere diameter)
 // If Snake hits edge or itself, show a window.alert("Game over") with a start over button or exit button (closes window)
 // Include HTML tally in the top right hand corner for score
+
+// TODO 
+// Add Apple
+// Make Snake move
+// Have snake grow with each apple - one sphere bc >1 is hard
+// Make snake body follow head
 
 
 'use strict';
@@ -29,6 +33,7 @@ let scale = [0.1, 0.1, 0.1];
 
 let current_direction = "up";
 let snake = [];
+let score = 0;
 
 // Once the document is fully loaded run this init function.
 window.addEventListener('load', function init() {
@@ -293,7 +298,15 @@ function changeDirection(direction){
     return current_direction;
 }
 
+function updateScore(){
+    score += 5;
+    document.getElementById("score").innerHTML = score.toString();
+}
+
 function onKeyDown(e) {
+    if (e.key === "p"){
+        updateScore();
+    }
     // Turn Facing Up
     if (e.key === "ArrowUp" || e.key === "w") {
         current_direction = changeDirection("up");
