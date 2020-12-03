@@ -290,26 +290,27 @@ function changeDirection(direction){
     } else if (current_direction === "right" && direction != "left") {
         return direction;
     }
-    return direction
+    return current_direction;
 }
 
 function onKeyDown(e) {
     // Turn Facing Up
     if (e.key === "ArrowUp" || e.key === "w") {
-        console.log("Up");
+        current_direction = changeDirection("up");
     }
     // Turn Facing Down
     if (e.key === "ArrowDown" || e.key === "s") {
-        console.log("Down");
+        current_direction = changeDirection("down");
     }
     // Turn Facing Left
     if (e.key === "ArrowLeft" || e.key === "a") {
-        console.log("Left");
+        current_direction = changeDirection("left");
     }
     // Turn Facing Right
     if (e.key === "ArrowRight" || e.key === "d") {
-        console.log("Right");
+        current_direction = changeDirection("right");
     }
+    console.log(current_direction);
     
 }
 
