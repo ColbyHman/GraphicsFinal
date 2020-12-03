@@ -4,14 +4,14 @@
 // Apple changes - Instead of deleting the apple and readding it, we just need to change the modelview matrix
 // Body of snake movement - Increase the coordinate of each corresponding 
 //  model view matrix coordinate by (some unit that we decide - one sphere diameter)
-// If Snake hits edge or itself, show a window.alert("Game over") with a start over button or exit button (closes window)
-// Include HTML tally in the top right hand corner for score
+
 
 // TODO 
 // Add Apple
 // Make Snake move
 // Have snake grow with each apple - one sphere bc >1 is hard
 // Make snake body follow head
+// If Snake hits edge or itself, show a window.alert("Game over") with a start over button or exit button (closes window)
 
 
 'use strict';
