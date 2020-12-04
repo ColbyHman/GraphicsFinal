@@ -13,6 +13,7 @@
 
         <!-- Load the code for this example -->
         <script src="snake.js"></script>
+        <script src="tools.js"></script>
 
         <!-- Style the canvas -->
         <style type="text/css">
@@ -43,8 +44,18 @@
         </style>
     </head>
     <body>
+        <div style="position:absolute;top:0px;left:50px;font-size:30px">
+            <h3> Snake! </h3>    
+        </div>
+        <div style="position:absolute;bottom:10px;left:50px;">
+            <h3> By Colby, Jarod, and Larisa </h3>
+        </div>
         <h2 class="label">Score : </h2><h2 id="score">0</h2>
-        <h2 class="label">Score : </h2><h2 id="score">0</h2>
+
+            <div style="position:absolute;bottom:0px;right:50px;">
+                <h3>Up Arrow / W = Up, Down Arrow / S = Down</h3>
+                <h3>Left Arrow / A = Left, Right Arrow / D = Right</h3>
+            </div>
 
         <!-- Define the canvas to use for the WebGL example -->
         <canvas id="webgl-canvas" width="400" height="400">
