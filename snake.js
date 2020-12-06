@@ -4,6 +4,7 @@
 // Apple changes - Instead of deleting the apple and readding it, we just need to change the modelview matrix
 // Body of snake movement - Increase the coordinate of each corresponding 
 //  model view matrix coordinate by (some unit that we decide - one sphere diameter)
+// Two MVMs? One for apple (static until it's moved), one for snake (constantly changing)?
 
 
 // TODO 
@@ -34,6 +35,10 @@ let position = [0, 0, -10];
 let rotation = [0, 0, 0];
 let scale = [0.1, 0.1, 0.1];
 
+let apple_position = [0, 0, -10];
+let apple_rotation = [0, 0, 0];
+let apple_scale = [0.005, 0.005, 0.005];
+
 let current_direction = "up";
 let snake = [];
 let score = 0;
@@ -62,8 +67,21 @@ window.addEventListener('load', function init() {
     updateModelViewMatrix();
     updateProjectionMatrix();
     
-    // Render the static scene
-    render();
+    // Load models and wait for them all to complete
+    Promise.all([
+        loadModel('apple.json'),
+    ]).then(
+        models => {
+            // All models have now fully loaded
+            // Now we can add user interaction events and render the scene
+            // The provided models is an array of all of the loaded models
+            // Each model is a VAO and a number of indices to draw
+            gl.models = models;
+            onWindowResize();
+            initEvents();
+            render();
+        }
+    );
 });
 
 /**
@@ -150,6 +168,7 @@ function initProgram() {
     program.uLight = gl.getUniformLocation(program, 'uLight');
     program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
     program.uModelViewMatrix = gl.getUniformLocation(program, 'uModelViewMatrix');
+    
         
     return program;
 }
@@ -263,8 +282,9 @@ function updateSnakeBody(index, length){
 
 function moveSnake(){
 
-    if ((-1.0 < position[0] && position[0] < (gl.canvas.width - 1)) && (-1.0 < position[1] && position[1] < (gl.canvas.height - 1))) {
+    if (((0 - gl.canvas.width)/2 < position[0] && position[0] < (gl.canvas.width)) && ((0 - gl.canvas.height)/2 < position[1] && position[1] < (gl.canvas.height))) {
         console.log("Valid", position[0], position[1]);
+        console.log(gl.canvas.height);
     }
     if(current_direction === "up"){
         position[1] += 0.05;
@@ -287,7 +307,12 @@ function updateModelViewMatrix() {
     let mv = glMatrix.mat4.fromRotationTranslationScale(glMatrix.mat4.create(),
         glMatrix.quat.fromEuler(glMatrix.quat.create(), ...rotation), position, scale);
     gl.uniformMatrix4fv(gl.program.uModelViewMatrix, false, mv);
+}
 
+function updateAppleModelViewMatrix(){
+    let mv = glMatrix.mat4.fromRotationTranslationScale(glMatrix.mat4.create(),
+    glMatrix.quat.fromEuler(glMatrix.quat.create(), ...apple_rotation), apple_position, apple_scale);
+    gl.uniformMatrix4fv(gl.program.uModelViewMatrix, false, mv);
 }
 
 /**
@@ -316,9 +341,21 @@ function render() {
     moveSnake();
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    
+    gl.bindVertexArray(null);
     let [vao, count] = obj;
     gl.bindVertexArray(vao);
+    
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
+    
+    updateAppleModelViewMatrix();
+    for (let [vao, count] of gl.models) {
+        gl.bindVertexArray(vao);
+        gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+    }
+    
+
     window.requestAnimationFrame(render);
 }
