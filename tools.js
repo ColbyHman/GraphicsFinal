@@ -104,8 +104,6 @@ function loadModel(filename) {
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW); // load the data into the buffer
             gl.vertexAttribPointer(gl.program.aPosition, 3, gl.FLOAT, false, 0, 0); // associate the buffer with "aPosition" as length-3 vectors of floats
             gl.enableVertexAttribArray(gl.program.aPosition); // enable this set of data
-
-
             
             // Load the vertex normal data onto the GPU and associate with attribute
             let normals = calc_normals(vertices, raw_model.indices);

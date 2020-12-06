@@ -37,7 +37,7 @@ let scale = [0.1, 0.1, 0.1];
 
 let apple_position = [0, 0, -10];
 let apple_rotation = [0, 0, 0];
-let apple_scale = [0.005, 0.005, 0.005];
+let apple_scale = [0.004, 0.004, 0.004];
 
 let current_direction = "up";
 let snake = [];
@@ -72,13 +72,7 @@ window.addEventListener('load', function init() {
         loadModel('apple.json'),
     ]).then(
         models => {
-            // All models have now fully loaded
-            // Now we can add user interaction events and render the scene
-            // The provided models is an array of all of the loaded models
-            // Each model is a VAO and a number of indices to draw
             gl.models = models;
-            onWindowResize();
-            initEvents();
             render();
         }
     );
@@ -121,8 +115,8 @@ function initProgram() {
 
         // Light and material properties
         const vec3 lightColor = vec3(1, 1, 1);
-        const vec3 materialAmbient = vec3(0.2, 0.2, 0.2);
-        const vec3 materialDiffuse = vec3(0.5, 0.5, 0.5);
+        const vec3 materialAmbient = vec3(1, 0.2, 0.2);
+        const vec3 materialDiffuse = vec3(1, 0.5, 0.5);
         const float materialShininess = 100.0;
 
         // Vectors (varying variables from vertex shader)
@@ -168,7 +162,7 @@ function initProgram() {
     program.uLight = gl.getUniformLocation(program, 'uLight');
     program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
     program.uModelViewMatrix = gl.getUniformLocation(program, 'uModelViewMatrix');
-    
+
         
     return program;
 }
