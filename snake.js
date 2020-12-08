@@ -25,7 +25,7 @@ let coords, indices;
 // Allow use of glMatrix values directly instead of needing the glMatrix prefix
 const mat4 = glMatrix.mat4;
 const vec3 = glMatrix.vec3;
-const world_color = [0.0, 1.0, 0.0];
+const world_color = [0.0, 0.75, 0.0];
 const snake_head_color = [0.75, 0.75, 0.75];
 const snake_body_color = [0.5, 0.5, 0.5];
 const apple_color = [1.0, 0.0, 0.0];
@@ -374,19 +374,11 @@ function onWindowResize() {
 function render() {
     moveSnake();
     updateProjectionMatrix();
-
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.uniform3f(gl.program.uColor, ...world_color);
     updateWorldModelViewMatrix();
-    [vao, count] = world;
-    gl.bindVertexArray(vao);
-    gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
-    gl.bindVertexArray(null);
-
-    gl.uniform3f(gl.program.uColor, ...snake_head_color);
-    updateModelViewMatrix();
-    let [vao, count] = obj;
+    let [vao, count] = world;
     gl.bindVertexArray(vao);
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
@@ -397,6 +389,15 @@ function render() {
         gl.bindVertexArray(vao);
         gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     }
+
+    gl.uniform3f(gl.program.uColor, ...snake_head_color);
+    updateModelViewMatrix();
+    [vao, count] = obj;
+    gl.bindVertexArray(vao);
+    gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+    gl.bindVertexArray(null);
+
+    
     
 
     window.requestAnimationFrame(render);
