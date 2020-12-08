@@ -174,3 +174,40 @@ function calc_normals(positions, indices) {
     // Return the computed normals
     return normals;
 }
+
+
+function createWorld(coords, indices) {
+    coords = Float32Array.from(coords);
+    let normals = calc_normals(coords, indices);
+
+    // Create and bind VAO
+    let vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+
+    // Load the coordinate data into the GPU and associate with shader
+    let buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(gl.program.aPosition, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(gl.program.aPosition);
+
+    // Load the normal data into the GPU and associate with shader
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(gl.program.aNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(gl.program.aNormal);
+
+    // Load the index data into the GPU
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, Uint16Array.from(indices), gl.STATIC_DRAW);
+
+    // Cleanup
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+    // Return the object information
+    return [vao, indices.length];
+}
