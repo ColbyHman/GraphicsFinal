@@ -17,6 +17,10 @@
 const EASY = 0.05;
 const MEDIUM = 0.08;
 const HARD = 0.1;
+const world_color = [0.0, 0.75, 0.0];
+const snake_head_color = [0.75, 0.75, 0.75];
+const snake_body_color = [0.5, 0.5, 0.5];
+const apple_color = [1.0, 0.0, 0.0];
 
 // Global WebGL context variable
 let gl;
@@ -25,15 +29,13 @@ let coords, indices;
 // Allow use of glMatrix values directly instead of needing the glMatrix prefix
 const mat4 = glMatrix.mat4;
 const vec3 = glMatrix.vec3;
-const world_color = [0.0, 0.75, 0.0];
-const snake_head_color = [0.75, 0.75, 0.75];
-const snake_body_color = [0.5, 0.5, 0.5];
-const apple_color = [1.0, 0.0, 0.0];
 
 // Snake
 let obj;
 
 let world;
+
+let difficulty = EASY;
 
 let position = [0, 0, -10];
 let rotation = [0, 0, 0];
@@ -100,7 +102,7 @@ function initProgram() {
 
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
-        const vec4 light = vec4(0, 0, 5, 1);
+        const vec4 light = vec4(0, 0, 10, 1);
 
         in vec4 aPosition;
         in vec3 aNormal;
@@ -310,17 +312,17 @@ function updateSnakeBody(index, length){
 
 function moveSnake(){    
         if(current_direction === "up"){
-            position[1] += 0.05;
+            position[1] += difficulty;
         } else if (current_direction === "down") {
-            position[1] -= 0.05;
+            position[1] -= difficulty;
         } else if (current_direction === "left") {
-            position[0] -= 0.05;
+            position[0] -= difficulty;
         } else if (current_direction === "right") {
-            position[0] += 0.05;
+            position[0] += difficulty;
         } else if (current_direction === "backward") {
-            position[2] += 0.05;
+            position[2] += difficulty;
         } else if (current_direction === "forward") {
-            position[2] -= 0.05;
+            position[2] -= difficulty;
         }
         console.log(current_direction);
         updateSnakeBody()
