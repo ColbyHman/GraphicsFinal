@@ -9,7 +9,6 @@
 // TODO 
 // Have snake grow with each apple - one sphere bc >1 is hard
 // Make snake body follow head
-// If Snake hits edge or itself, show a window.alert("Game over") with a start over button or exit button (closes window)
 
 
 'use strict';
@@ -248,8 +247,8 @@ function initEvents() {
     document.addEventListener('keydown', onKeyDown);
 }
 
-function changeDirection(direction){
-    if (current_direction === "up" && direction != "down") {
+function changeDirection(direction) {
+    if (current_direction === "up" && direction !== "down") {
         return direction;
     } else if (current_direction === "down" && direction !== "up") {
         return direction;
@@ -270,19 +269,35 @@ function updateScore() {
     document.getElementById("score").innerHTML = score.toString();
 }
 
+// TODO - Make this work. Should create a sphere, add it to snake (list variable at the top), and make sure it is one sphere distance away
 function addToSnake() {
     snake += [position];
 }
 
-function eatApple(){
-    updateScore();
+//Move apple to a different position within the bounds of the world
+//bounds for world are -1 - 1
+function moveApple(){
+    
+    apple_position[0] = (Math.random() * 2) - 1;
+    apple_position[1] = (Math.random() * 2) - 1;
+    apple_position[2] = (Math.random() * 2) - 1;
+
 }
 
-function checkForWall(){
+function eatApple() {
+    updateScore();
+    moveApple();
+    // addToSnake();
+}
 
-    if((position[0] >= 0.95 || position[0] <= -0.95) ||
-       (position[1] >= 0.95 || position[1] <= -0.95) ||
-       (position[2] >= 0.95 || position[2] <= -0.95)
+
+
+// Checks if the snake has come into contact with a wall
+function checkForWall() {
+
+    if((position[0] >= 0.99 || position[0] <= -0.99) ||
+       (position[1] >= 0.99 || position[1] <= -0.99) ||
+       (position[2] >= 0.99 || position[2] <= -0.99)
     ) {
         return true;
     }
@@ -290,11 +305,11 @@ function checkForWall(){
 
 }
 
+// Checks if snake has come into contact with the apple
 function checkForApple(){
     let x_distance = Math.abs(position[0] - apple_position[0]);
     let y_distance = Math.abs(position[1] - apple_position[1]);
     let z_distance = Math.abs(position[2] - apple_position[2]);
-    // console.log(x_distance, y_distance, z_distance);
     if(x_distance < 0.1 && y_distance < 0.1 && z_distance < 0.1){
         return true;
     }
@@ -323,7 +338,8 @@ function onKeyDown(e) {
     }
 }
 
-function updateSnakeBody(index, length){
+// TODO - Make this work better
+function updateSnakeBody(index, length) {
     if(current_direction === "up" || current_direction === "right")
         for (sphere of snake){
             sphere[index] += length;
@@ -335,8 +351,8 @@ function updateSnakeBody(index, length){
     }
 }
 
-function moveSnake(){ 
-    if(!checkForWall()){
+function moveSnake() { 
+    if(!checkForWall()) {
         if(current_direction === "up"){
             position[1] += difficulty;
         } else if (current_direction === "down") {
@@ -418,8 +434,6 @@ function onWindowResize() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     updateProjectionMatrix();
 }
-
-
 
 /**
  * Render the scene.
