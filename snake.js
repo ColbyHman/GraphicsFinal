@@ -14,9 +14,9 @@
 
 'use strict';
 // Constants
-const EASY = 0.05;
-const MEDIUM = 0.08;
-const HARD = 0.1;
+const EASY = 0.005;
+const MEDIUM = 0.008;
+const HARD = 0.01;
 const world_color = [0.0, 0.75, 0.0];
 const snake_head_color = [0.75, 0.75, 0.75];
 const snake_body_color = [0.5, 0.5, 0.5];
@@ -37,22 +37,21 @@ let world;
 
 let difficulty = EASY;
 
-let position = [0, 0, -10];
+let position = [0, 0, 0];
 let rotation = [0, 0, 0];
-let scale = [0.1, 0.1, 0.1];
+let scale = [0.05, 0.05, 0.05];
 
-let apple_position = [0, 0, -10];
+let apple_position = [0, 0, -1];
 let apple_rotation = [0, 0, 0];
-let apple_scale = [0.01, 0.01, 0.01];
+let apple_scale = [0.001, 0.001, 0.001];
 
-let world_position = [0, -1, -10];
-let world_rotation = [35, 0, 0];
-let world_scale = [1, 0.1, 1];
+let world_position = [0, 0, 0];
+let world_rotation = [0, 0, 0];
+let world_scale = [1, 1, 1];
 
 let current_direction = "forward";
 let snake = [];
 let score = 0;
-
 
 
 // Once the document is fully loaded run this init function.
@@ -73,11 +72,10 @@ window.addEventListener('load', function init() {
     gl.program = initProgram();
     initBuffers();
     initEvents();
-    
-    gl.uniform4f(gl.program.uLight, 1,1,1,1);
     onWindowResize();
     updateModelViewMatrix();
     updateProjectionMatrix();
+    
     
     // Load models and wait for them all to complete
     Promise.all([
@@ -102,7 +100,7 @@ function initProgram() {
 
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
-        const vec4 light = vec4(0, 0, 10, 1);
+        const vec4 light = vec4(0, 10, 0, 1);
 
         in vec4 aPosition;
         in vec3 aNormal;
@@ -127,7 +125,7 @@ function initProgram() {
 
         uniform vec3 uColor;
         // Light and material properties
-        const vec3 lightColor = vec3(1, 1, 1);
+        const vec3 lightColor = vec3(1.0, 1.0, 1.0);
         const vec3 materialAmbient = vec3(1, 0.2, 0.2);
         const vec3 materialDiffuse = vec3(1, 0.2, 0.2);
         const float materialShininess = 100.0;
@@ -185,14 +183,14 @@ function initProgram() {
  */
 function initBuffers() {
     let cube_coords = [
-        10, 10, 10, // A
-        -10, 10, 10, // B
-        -10, -10, 10, // C
-        10, -10, 10, // D
-        10, -10, -10, // E
-        -10, -10, -10, // F
-        -10, 10, -10, // G
-        10, 10, -10 // H
+        1, 1, 1, // A
+        -1, 1, 1, // B
+        -1, -1, 1, // C
+        1, -1, 1, // D
+        1, -1, -1, // E
+        -1, -1, -1, // F
+        -1, 1, -1, // G
+        1, 1, -1 // H
     ];
     let cube_indices = [
         1, 2, 0, 2, 3, 0,
@@ -276,6 +274,33 @@ function addToSnake() {
     snake += [position];
 }
 
+function eatApple(){
+    updateScore();
+}
+
+function checkForWall(){
+
+    if((position[0] >= 0.95 || position[0] <= -0.95) ||
+       (position[1] >= 0.95 || position[1] <= -0.95) ||
+       (position[2] >= 0.95 || position[2] <= -0.95)
+    ) {
+        return true;
+    }
+    return false;
+
+}
+
+function checkForApple(){
+    let x_distance = Math.abs(position[0] - apple_position[0]);
+    let y_distance = Math.abs(position[1] - apple_position[1]);
+    let z_distance = Math.abs(position[2] - apple_position[2]);
+    // console.log(x_distance, y_distance, z_distance);
+    if(x_distance < 0.1 && y_distance < 0.1 && z_distance < 0.1){
+        return true;
+    }
+    return false;
+}
+
 function onKeyDown(e) {
     if (e.key === "p"){
         addToSnake();
@@ -310,7 +335,8 @@ function updateSnakeBody(index, length){
     }
 }
 
-function moveSnake(){    
+function moveSnake(){ 
+    if(!checkForWall()){
         if(current_direction === "up"){
             position[1] += difficulty;
         } else if (current_direction === "down") {
@@ -324,9 +350,15 @@ function moveSnake(){
         } else if (current_direction === "forward") {
             position[2] -= difficulty;
         }
-        console.log(current_direction);
         updateSnakeBody()
+    } else {
+        window.alert("Game Over! Your score was " + score + ". Press 'ok' to play again.");
+        position = [0,0,0];
+        window.location.reload();
+    }
+    // console.log(current_direction);
 }
+
 
 /**
  * Updates the model-view matrix with a rotation, translation, scale, and origin.
@@ -357,6 +389,23 @@ function updateWorldModelViewMatrix(){
 function updateProjectionMatrix() {
     let aspect = gl.canvas.width / gl.canvas.height;
     let p = mat4.perspective(mat4.create(), 90, aspect, 0.01, 10);
+    // p = mat4.fromTranslation(p, position);
+
+
+    if (current_direction === "up") {
+        mat4.lookAt(p, position, [position[0],1,position[2]], [0,1,0]);
+    } else if (current_direction === "down") {
+        mat4.lookAt(p, position, [position[0],-1,position[2]], [0,1,0]);
+    } else if (current_direction === "left") {
+        mat4.lookAt(p, position, [1,position[1],position[2]], [0,1,0]);
+    } else if (current_direction === "right") {
+        mat4.lookAt(p, position, [-1,position[1],position[2]], [0,1,0]);
+    } else if (current_direction === "forward") {
+        mat4.lookAt(p, position, [position[0],position[1],1], [0,1,0]);
+    } else if (current_direction === "backward") {
+        mat4.lookAt(p, position, [position[0],position[1],-1], [0,1,0]);
+    }
+
     gl.uniformMatrix4fv(gl.program.uProjectionMatrix, false, p);
 }
 
@@ -370,32 +419,38 @@ function onWindowResize() {
     updateProjectionMatrix();
 }
 
+
+
 /**
  * Render the scene.
  */
 function render() {
-    moveSnake();
     updateProjectionMatrix();
+    moveSnake();
+    if(checkForApple()){
+        eatApple();
+    }
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    
     gl.uniform3f(gl.program.uColor, ...world_color);
-    updateWorldModelViewMatrix();
     let [vao, count] = world;
     gl.bindVertexArray(vao);
+    updateWorldModelViewMatrix();
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
-
+    
     gl.uniform3f(gl.program.uColor, ...apple_color);
-    updateAppleModelViewMatrix();
     for (let [vao, count] of gl.models) {
         gl.bindVertexArray(vao);
+        updateAppleModelViewMatrix();
         gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     }
-
+    
     gl.uniform3f(gl.program.uColor, ...snake_head_color);
-    updateModelViewMatrix();
     [vao, count] = obj;
     gl.bindVertexArray(vao);
+    updateModelViewMatrix();
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
 
