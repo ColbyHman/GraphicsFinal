@@ -15,6 +15,7 @@
         <script src="snake.js"></script>
         <script src="tools.js"></script>
 
+        
         <!-- Style the canvas -->
         <style type="text/css">
             body {
@@ -27,17 +28,28 @@
                 top: 0; bottom: 0; left: 0; right: 0;
                 margin: auto;
             }
-            h2 {
-                right:0;
-                bottom: 10;
+            .score {
+                right:0%;
+                top: 0%;
                 margin-right: 10%;
                 position: absolute;
                 color:black;
             }
+            .difficulty {
+                right:60%;
+                left: 40%;
+                position: absolute;
+                top:0%;
+            }
+            .difficulty-select {
+                right:50%;
+                left: 50%;
+                position: absolute;
+                top:4%;
+            }
             .label {
-                right:0;
-                bottom: 10;
-                margin-right: 15%;
+                top:0%;
+                right:15%;
                 position: absolute;
             }
             
@@ -45,16 +57,33 @@
     </head>
     <body>
         <div style="position:absolute;top:0px;left:50px;font-size:30px">
-            <h3> Snake! </h3>    
+               
         </div>
+
+        <table style="margin-left: 10%;">
+            <th><h1 class="title">Snake!</h1></th>
+            <th><h1 class="difficulty">Difficulty</h2>
+                <td><select id="difficulty" class="difficulty-select">
+                <option value="easy">easy</option>
+                <option value="medium">medium</option>
+                <option value="hard">hard</option></td>
+            </select></th>
+            <th><h1 class="label">Score : </h1><h1 id="score" class="score">0</h1></th>
+        </table>
+
+        
+
         <div style="position:absolute;bottom:10px;left:50px;">
             <h3> By Colby, Jarod, and Larisa </h3>
         </div>
-        <h2 class="label">Score : </h2><h2 id="score">0</h2>
+        
+        <!-- Audio Citation: Gameboy in Traffic by Jaeden Camstra-->
+        <audio id="audio" src="gameboy.mp3"></audio>
 
-            <div style="position:absolute;bottom:0px;right:50px;">
-                <h3>Up Arrow / W = Up, Down Arrow / S = Down</h3>
-                <h3>Left Arrow / A = Left, Right Arrow / D = Right</h3>
+            <div style="position:absolute;bottom:0px;right:30px;">
+                <h3>W = Up, S = Down</h3>
+                <h3>A = Left, D = Right</h3>
+                <h3>Spacebar = Toggle Music</h3>
             </div>
 
         <!-- Define the canvas to use for the WebGL example -->

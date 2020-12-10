@@ -1,21 +1,11 @@
 // Snake: The Game
 
-// IMPORTANT NOTES
-// Apple changes - Instead of deleting the apple and readding it, we just need to change the modelview matrix
-// Body of snake movement - Increase the coordinate of each corresponding 
-//  model view matrix coordinate by (some unit that we decide - one sphere diameter)
-
-
-// TODO 
-// Have snake grow with each apple - one sphere bc >1 is hard
-// Make snake body follow head
-
 
 'use strict';
 // Constants
 const EASY = 0.005;
-const MEDIUM = 0.008;
-const HARD = 0.01;
+const MEDIUM = 0.01;
+const HARD = 0.05;
 const world_color = [0.0, 0.75, 0.0];
 const snake_head_color = [0.75, 0.75, 0.75];
 const snake_body_color = [0.5, 0.5, 0.5];
@@ -31,7 +21,6 @@ const vec3 = glMatrix.vec3;
 
 // Snake
 let obj;
-
 let world;
 
 let difficulty = EASY;
@@ -39,18 +28,28 @@ let difficulty = EASY;
 let position = [0, 0, 0];
 let rotation = [0, 0, 0];
 let scale = [0.05, 0.05, 0.05];
+let snake_mv = mat4.create();
 
-let apple_position = [0, 0, -1];
+let apple_position = [0, 0, -0.5];
 let apple_rotation = [0, 0, 0];
 let apple_scale = [0.001, 0.001, 0.001];
+let apple_mv = mat4.create();
 
-let world_position = [0, 0, 0];
+let world_position = [0, 0, 1];
 let world_rotation = [0, 0, 0];
 let world_scale = [1, 1, 1];
+let world_mv = mat4.create();
 
 let current_direction = "forward";
-let snake = [];
+let snake = []
 let score = 0;
+
+let pvm = mat4.create();
+
+let audioContext;
+let audio;
+let track;
+let is_playing = true;
 
 
 // Once the document is fully loaded run this init function.
@@ -71,11 +70,32 @@ window.addEventListener('load', function init() {
     gl.program = initProgram();
     initBuffers();
     initEvents();
-    onWindowResize();
-    updateModelViewMatrix();
-    updateProjectionMatrix();
-    
-    
+    onWindowResize();    
+
+    updateModelViewMatrix(snake_mv, position, rotation, scale);
+    updateModelViewMatrix(world_mv, world_position, world_rotation, world_scale);
+    updateModelViewMatrix(apple_mv, apple_position, apple_rotation, apple_scale);
+    updateProjectionMatrix(pvm);
+
+    // Start music
+    // Music Controls Citation: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext
+    // Create audio context object
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Connect audio HTML element to JS object
+    audio = document.getElementById("audio");
+    track = audioContext.createMediaElementSource(audio);
+    track.connect(audioContext.destination);
+
+    // Create gain node for volume
+    let gainNode = audioContext.createGain();
+    track.connect(gainNode).connect(audioContext.destination);
+    gainNode.gain.value = 0;
+
+    // Play the audio
+    audio.play();
+
+
     // Load models and wait for them all to complete
     Promise.all([
         loadModel('apple.json'),
@@ -127,7 +147,7 @@ function initProgram() {
         const vec3 lightColor = vec3(1.0, 1.0, 1.0);
         const vec3 materialAmbient = vec3(1, 0.2, 0.2);
         const vec3 materialDiffuse = vec3(1, 0.2, 0.2);
-        const float materialShininess = 100.0;
+        const float materialShininess = 50.0;
 
         // Vectors (varying variables from vertex shader)
         in vec3 vNormalVector;
@@ -165,7 +185,7 @@ function initProgram() {
     
     // Get the position attribute index
     program.aPosition = gl.getAttribLocation(program, 'aPosition'); // get the vertex shader attribute "aPosition"
-    program.aNormal = gl.getAttribLocation(program, 'aNormal');
+    program.aNormal = gl.getAttribLocation(program, 'aNormal'); // get the vertex shader attribute "aNormal"
     
     // Get uniform indeces
     program.uPosition = gl.getUniformLocation(program, 'uPosition');
@@ -189,7 +209,7 @@ function initBuffers() {
         1, -1, -1, // E
         -1, -1, -1, // F
         -1, 1, -1, // G
-        1, 1, -1 // H
+        1, 1, -1, // H
     ];
     let cube_indices = [
         1, 2, 0, 2, 3, 0,
@@ -201,7 +221,8 @@ function initBuffers() {
     ];
     world = createWorld(cube_coords, cube_indices);
     [coords, indices] = unit_sphere();
-    obj = createObject(coords, indices);
+    let [vao, count] = createObject(coords, indices);
+    snake.push([snake_mv, position, vao, count, snake_head_color]);
 }
 
 /**
@@ -245,16 +266,21 @@ function createObject(coords, indices) {
 function initEvents() {
     window.addEventListener('resize', onWindowResize);
     document.addEventListener('keydown', onKeyDown);
+    document.getElementById('difficulty').addEventListener('input', updateDifficulty);
 }
 
 function changeDirection(direction) {
     if (current_direction === "up" && direction !== "down") {
+        rotation[0] -= deg2rad(90);
         return direction;
     } else if (current_direction === "down" && direction !== "up") {
+        rotation[0] += deg2rad(90);
         return direction;
     } else if (current_direction === "left" && direction !== "right") {
+        rotation[2] -= deg2rad(90);
         return direction;
     } else if (current_direction === "right" && direction !== "left") {
+        rotation[2] += deg2rad(90);
         return direction;
     } else if (current_direction === "forward" && direction !== "backward") {
         return direction;
@@ -264,33 +290,55 @@ function changeDirection(direction) {
     return current_direction;
 }
 
+/**
+ * Updates the score by 5 for every apple eaten.
+ */
 function updateScore() {
     score += 5;
     document.getElementById("score").innerHTML = score.toString();
 }
 
-// TODO - Make this work. Should create a sphere, add it to snake (list variable at the top), and make sure it is one sphere distance away
-function addToSnake() {
-    snake += [position];
+/**
+ * Update the difficulty from HTML inputs.
+ */
+function updateDifficulty() {
+    let difficulty_val = document.getElementById('difficulty').value;
+    if (difficulty_val === "easy") {
+        difficulty = EASY;
+    } else if (difficulty_val === "medium") {
+        difficulty = MEDIUM;
+    } else {
+        difficulty = HARD;
+    }
 }
 
-//Move apple to a different position within the bounds of the world
-//bounds for world are -1 - 1
+/**
+ * Creates a sphere, add it to snake (list variable at the top), and make sure it is one sphere distance away
+ */
+function addToSnake() {
+    let last_position = [snake[(snake.length - 1)][1]];
+    [coords, indices] = unit_sphere();
+    let [vao, count] = createObject(coords, indices);
+    let mv = mat4.create();
+    moveSnake();
+    snake.push([mv, last_position, vao, count, snake_body_color]);
+}
+
+/**
+ * Move apple to a different position within the bounds of the world
+ */
 function moveApple(){
-    
     apple_position[0] = (Math.random() * 2) - 1;
     apple_position[1] = (Math.random() * 2) - 1;
     apple_position[2] = (Math.random() * 2) - 1;
-
 }
 
 function eatApple() {
     updateScore();
     moveApple();
-    // addToSnake();
+    addToSnake();
+    moveSnake();
 }
-
-
 
 // Checks if the snake has come into contact with a wall
 function checkForWall() {
@@ -302,7 +350,6 @@ function checkForWall() {
         return true;
     }
     return false;
-
 }
 
 // Checks if snake has come into contact with the apple
@@ -316,29 +363,75 @@ function checkForApple(){
     return false;
 }
 
+function pause(){
+    sphere = 1;
+}
+
 function onKeyDown(e) {
     if (e.key === "p"){
-        addToSnake();
+        pause();
+    }
+    // When you hit the spacebar then it pauses and unpauses the music.
+    if ((e.key === "Spacebar") || (e.key === " ")) {
+        if (is_playing) {
+            audio.pause();
+            is_playing = false;
+        } else {
+            audio.play();
+            is_playing = true;
+        }
     }
     // Turn Facing Up
     if (e.key === "w") {
-        current_direction = changeDirection("forward");
+        if (current_direction === "forward") {
+            current_direction = changeDirection("up");
+        } else if (current_direction === "up") {
+            current_direction = changeDirection("backward");
+        } else if (current_direction === "backward") {
+            current_direction = changeDirection("down");
+        } else {
+            current_direction = changeDirection("forward");
+        }
     }
     // Turn Facing Down
     if (e.key === "s") {
-        current_direction = changeDirection("backward");
+        if (current_direction === "backward") {
+            current_direction = changeDirection("down");
+        } else if (current_direction === "down") {
+            current_direction = changeDirection("forward");
+        } else if (current_direction === "up") {
+            current_direction = changeDirection("forward");
+        } else {
+            current_direction = changeDirection("backward");
+        }
     }
     // Turn Facing Left
     if (e.key === "a") {
-        current_direction = changeDirection("left");
+        if (current_direction === "left") {
+            current_direction = changeDirection("backward");
+        } else if (current_direction === "backward") {
+            current_direction = changeDirection("right");
+        } else if (current_direction === "right") {
+            current_direction = changeDirection("forward");
+        } else {
+            current_direction = changeDirection("left");        
+        }
     }
     // Turn Facing Right
     if (e.key === "d") {
-        current_direction = changeDirection("right");
+        if (current_direction === "right") {
+            current_direction = changeDirection("backward");
+        } else if (current_direction === "backward") {
+            current_direction = changeDirection("left");
+        } else if (current_direction === "left") {
+            current_direction = changeDirection("forward");
+        } else {
+            current_direction = changeDirection("right");     
+        }
     }
 }
 
-// TODO - Make this work better
+
 function updateSnakeBody(index, length) {
     if(current_direction === "up" || current_direction === "right")
         for (sphere of snake){
@@ -352,8 +445,9 @@ function updateSnakeBody(index, length) {
 }
 
 function moveSnake() { 
+
     if(!checkForWall()) {
-        if(current_direction === "up"){
+        if(current_direction === "up") {
             position[1] += difficulty;
         } else if (current_direction === "down") {
             position[1] -= difficulty;
@@ -366,13 +460,11 @@ function moveSnake() {
         } else if (current_direction === "forward") {
             position[2] -= difficulty;
         }
-        updateSnakeBody()
     } else {
         window.alert("Game Over! Your score was " + score + ". Press 'ok' to play again.");
         position = [0,0,0];
         window.location.reload();
     }
-    // console.log(current_direction);
 }
 
 
@@ -380,46 +472,34 @@ function moveSnake() {
  * Updates the model-view matrix with a rotation, translation, scale, and origin.
  * These will be changed to one function
  */
-function updateModelViewMatrix() {
+function updateModelViewMatrix(mv, position, rotation, scale) {
     // Update model-view matrix uniform
-    let mv = glMatrix.mat4.fromRotationTranslationScale(glMatrix.mat4.create(),
+    mv = glMatrix.mat4.fromRotationTranslationScale(mv,
         glMatrix.quat.fromEuler(glMatrix.quat.create(), ...rotation), position, scale);
-    gl.uniformMatrix4fv(gl.program.uModelViewMatrix, false, mv);
-}
-
-function updateAppleModelViewMatrix(){
-    let mv = glMatrix.mat4.fromRotationTranslationScale(glMatrix.mat4.create(),
-    glMatrix.quat.fromEuler(glMatrix.quat.create(), ...apple_rotation), apple_position, apple_scale);
-    gl.uniformMatrix4fv(gl.program.uModelViewMatrix, false, mv);
-}
-
-function updateWorldModelViewMatrix(){
-    let mv = glMatrix.mat4.fromRotationTranslationScale(glMatrix.mat4.create(),
-    glMatrix.quat.fromEuler(glMatrix.quat.create(), ...world_rotation), world_position, world_scale);
     gl.uniformMatrix4fv(gl.program.uModelViewMatrix, false, mv);
 }
 
 /**
  * Updates the projection matrix.
  */
-function updateProjectionMatrix() {
+function updateProjectionMatrix(p) {
     let aspect = gl.canvas.width / gl.canvas.height;
-    let p = mat4.perspective(mat4.create(), 90, aspect, 0.01, 10);
-    // p = mat4.fromTranslation(p, position);
+    p = mat4.perspective(p, deg2rad(90), aspect, 0.1, 10);
 
+    let [x, y, z] = position;
 
     if (current_direction === "up") {
-        mat4.lookAt(p, position, [position[0],1,position[2]], [0,1,0]);
+        mat4.lookAt(p, [x, y, z], [x, y, z], [1,0,0]);
     } else if (current_direction === "down") {
-        mat4.lookAt(p, position, [position[0],-1,position[2]], [0,1,0]);
+        mat4.lookAt(p, [x, y, z], [x, y, z], [-1,0,0]);
     } else if (current_direction === "left") {
-        mat4.lookAt(p, position, [1,position[1],position[2]], [0,1,0]);
+        mat4.lookAt(p, [x, y, z], [x, y, z], [0,1,0]);
     } else if (current_direction === "right") {
-        mat4.lookAt(p, position, [-1,position[1],position[2]], [0,1,0]);
+        mat4.lookAt(p, [x, y, z], [x, y, z], [0,1,0]);
     } else if (current_direction === "forward") {
-        mat4.lookAt(p, position, [position[0],position[1],1], [0,1,0]);
+        mat4.lookAt(p, [x, y, z], [x, y, z], [0,1,0]);
     } else if (current_direction === "backward") {
-        mat4.lookAt(p, position, [position[0],position[1],-1], [0,1,0]);
+        mat4.lookAt(p, [x, y, z], [x, y, z], [0,1,0]);
     }
 
     gl.uniformMatrix4fv(gl.program.uProjectionMatrix, false, p);
@@ -432,44 +512,44 @@ function onWindowResize() {
     gl.canvas.width = window.innerWidth;
     gl.canvas.height = window.innerHeight;
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    updateProjectionMatrix();
+    updateProjectionMatrix(pvm);
 }
 
 /**
  * Render the scene.
  */
 function render() {
-    updateProjectionMatrix();
-    moveSnake();
     if(checkForApple()){
         eatApple();
     }
+    moveSnake();
+    // updateSnakeBody();
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     
     gl.uniform3f(gl.program.uColor, ...world_color);
     let [vao, count] = world;
     gl.bindVertexArray(vao);
-    updateWorldModelViewMatrix();
+    updateModelViewMatrix(world_mv, world_position, world_rotation, world_scale);
     gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
     
     gl.uniform3f(gl.program.uColor, ...apple_color);
     for (let [vao, count] of gl.models) {
         gl.bindVertexArray(vao);
-        updateAppleModelViewMatrix();
+        updateModelViewMatrix(apple_mv ,apple_position, apple_rotation, apple_scale);
         gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+        gl.bindVertexArray(null);
     }
     
-    gl.uniform3f(gl.program.uColor, ...snake_head_color);
-    [vao, count] = obj;
-    gl.bindVertexArray(vao);
-    updateModelViewMatrix();
-    gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
-    gl.bindVertexArray(null);
-
+    for (let [mv, sphere_position, vao, count, color] of snake) {
+        gl.bindVertexArray(vao);
+        updateModelViewMatrix(mv, sphere_position, rotation, scale);
+        gl.uniform3f(gl.program.uColor, ...color);
+        gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+        gl.bindVertexArray(null);
+    }
+    updateProjectionMatrix(pvm);
     
-    
-
     window.requestAnimationFrame(render);
 }

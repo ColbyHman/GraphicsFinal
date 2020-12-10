@@ -129,7 +129,6 @@ function loadModel(filename) {
         .catch(console.error);
 }
 
-
 /**
  * Calculates the normals for the vertices given an array of vertices and array of indices to look
  * up into. The triangles are full triangles and not triangle strips.
@@ -174,7 +173,6 @@ function calc_normals(positions, indices) {
     // Return the computed normals
     return normals;
 }
-
 
 function createWorld(coords, indices) {
     coords = Float32Array.from(coords);
